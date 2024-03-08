@@ -4,15 +4,54 @@ from fastapi import Depends
 
 from services.api_handler import CinemaApi, get_cinema_api
 from services.message_pattenrs import (FILM_DESCRIPTION_MESSAGE_PATTERN,
-                                       FILMS_FOR_PERSON_PATTERN,
+                                       FILMS_FOR_PERSON_PATTERN, HELLO_MESSAGE,
                                        NOT_FOUND_MESSAGE_PATTERN,
-                                       ROLE_TRANSLATION)
+                                       ROLE_TRANSLATION, UNKNOWN_ANSWER)
 
 
 class AliceService:
 
     def __init__(self, cinema_api):
         self.cinema_api: CinemaApi = cinema_api
+
+    handlers = {
+        'film_description': (
+            ('film',), (None,),
+            'get_film_by_name'
+        ),
+        'best_films_by_rating_and_genre': (
+            ('genre', 'sort'), (None, '-imdb_rating'),
+            'get_films'
+        ),
+        'worst_films_by_rating_and_genre': (
+            ('genre', 'sort'), (None, 'imdb_rating'),
+            'get_films'
+        ),
+        'films_for_actor': (
+            ('name', 'role'), (None, 'actor'),
+            'get_films_for_person'
+        ),
+        'films_for_director': (
+            ('name', 'role'), (None, 'director'),
+            'get_films_for_person'
+        ),
+    }
+
+    def process_request(self, request):
+        if self.is_new_session(request):
+            return HELLO_MESSAGE
+        intents = self.parse_intents(request)
+        if not intents:
+            return UNKNOWN_ANSWER
+        txt = self.process_intents(intents)
+        return txt
+
+    def parse_intents(self, request):
+        intents = request.get('request', {}).get('nlu', {}).get('intents', {})
+        return intents
+
+    def is_new_session(self, request):
+        return request['session']['new'] is True
 
     def parse_slots(self, intents, id_key):
         result = {}
@@ -22,32 +61,30 @@ class AliceService:
             result[slot_name] = value
         return result
 
+    def _process_intent(
+            self,
+            intents: dict,
+            intent_name: str,
+            slot_names: list[str],
+            default_values: list,
+            callback_func_name
+    ):
+        slots = self.parse_slots(intents, intent_name)
+        values = []
+        for i, key in enumerate(slot_names):
+            default = default_values[i]
+            value = slots.get(key, default)
+            values.append(value)
+        return getattr(self, callback_func_name)(*values)
+
     def process_intents(self, intents: dict):
-        txt = None
-        if 'film_description' in intents:
-            slots = self.parse_slots(intents, 'film_description')
-            film_name = slots['film']
-            txt = self.get_film_by_name(film_name)
-        elif 'best_films_by_rating_and_genre' in intents:
-            slots = self.parse_slots(intents, 'best_films_by_rating_and_genre')
-            genre = slots.get('genre')
-            sort = '-imdb_rating'
-            txt = self.get_films(genre, sort)
-        elif 'worst_films_by_rating_and_genre' in intents:
-            slots = self.parse_slots(
-                intents, 'worst_films_by_rating_and_genre')
-            genre = slots.get('genre')
-            sort = 'imdb_rating'
-            txt = self.get_films(genre, sort)
-        elif 'films_for_actor' in intents:
-            slots = self.parse_slots(intents, 'films_for_actor')
-            name = slots.get('name')
-            txt = self.get_films_for_person(name, 'actor')
-        elif 'films_for_director' in intents:
-            slots = self.parse_slots(intents, 'films_for_director')
-            name = slots.get('name')
-            txt = self.get_films_for_person(name, 'director')
-        return txt
+        intent_name = list(intents.keys())[0]
+        if intent_name not in self.handlers:
+            return UNKNOWN_ANSWER
+        return self._process_intent(
+            intents, intent_name,
+            *self.handlers[intent_name]
+        )
 
     def get_film_by_name(self, name):
         film = self.cinema_api.get_film_by_name(name)

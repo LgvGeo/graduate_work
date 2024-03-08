@@ -11,6 +11,6 @@ logging_config.dictConfig(LOGGING)
 
 class CommonSettings(BaseSettings):
     project_name: str = 'voice_assistent'
-    cinema_api_url: str = Field(default='http://nginx/api/v1')
+    cinema_api_url: str = 'http://nginx/api/v1'
     base_dir: str = Field(
         default=os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

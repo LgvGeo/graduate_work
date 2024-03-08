@@ -3,3 +3,4 @@ __pycache__
 .env
 .vscode
 requests.http
+.test_env

@@ -69,7 +69,6 @@ class CinemaApi(APIHandlerBase):
         if genre:
             params['genre'] = genre
         content = self.get('/films', params=params)
-        print(content)
         if not content:
             return
         films = [MoviesListResponse(**x) for x in content]

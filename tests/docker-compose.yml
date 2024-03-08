@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+
+  elastic:
+    image: elasticsearch:8.6.2
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - xpack.monitoring.collection.enabled=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+  redis:
+    image: redis:7.2.1-alpine
+  api:
+    depends_on:
+      - elastic
+      - redis
+    build: ../ms-cinema-api/
+    env_file:
+      - ../.test_env
+  voice_assistant:
+    build: ../voice_assistant/
+    env_file:
+      - ../.test_env
+  tests:
+    depends_on:
+      - api
+      - voice_assistant
+    build: ./
+    env_file:
+      - ../.test_env

@@ -12,8 +12,8 @@ services:
     env_file:
       - ./.env
 
-  voice_assistent:
-    build: ./voice_assistent/
+  voice_assistant:
+    build: ./voice_assistant/
     env_file:
       - ./.env
 
@@ -22,15 +22,11 @@ services:
     volumes:
       - db_data:/var/lib/postgresql/data:rw
       - ./infra/postgres_init/movies_database.ddl:/docker-entrypoint-initdb.d/movies_db.sql
-    ports:
-      - "127.0.0.1:5432:5432"
     env_file:
       - ./.env
 
   elastic:
     image: elasticsearch:8.6.2
-    ports:
-      - "127.0.0.1:9200:9200"
     environment:
       - discovery.type=single-node
       - xpack.security.enabled=false
@@ -43,8 +39,6 @@ services:
 
   redis:
     image: redis:7.2.1-alpine
-    #ports:
-      #- "127.0.0.1:6379:6379"
     volumes:
       - redis_data:/data:rw
 
